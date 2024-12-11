@@ -2,12 +2,11 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-favorites=db.Table(
-    'favorites',
-    db.Model.metadata,
-    db.Column("user_id",db.ForeignKey("user.id")),
-    db.Column("planet_id",db.ForeignKey("planet.id")),
-    db.Column("character_id",db.ForeignKey("character.id"))
+user_favorites=db.Table(
+    'user_favorites',
+    db.Column("user_id",db.Integer,db.ForeignKey("user.id")),
+    db.Column("favorites_id",db.Integer, db.ForeignKey("favorite.id"))
+
 )
 
 class User(db.Model):
@@ -15,11 +14,14 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(40), nullable=False, unique=True)
     password = db.Column(db.String(10), nullable=False)
+
+    favorite=db.relationship("Favorite", secondary=user_favorites ,back_populates="user")
     
-    def serialize_user(self):
+    def serialize(self):
         return{
             "id":self.id,
-            "username":self.username
+            "username":self.username,
+            "favorites":[favorite.serialize() for favorite in self.favorite]
         }
 
    
@@ -32,7 +34,9 @@ class Planet(db.Model):
     description = db.Column(db.String(250),nullable=False)
     climate = db.Column(db.String(50))
 
-    def serialize_planet(self):
+    # favorites=db.relationship("favorites", back_populates="planet")
+
+    def serialize(self):
         return{
             "id":self.id,
             "name":self.name,
@@ -50,10 +54,27 @@ class Character(db.Model):
     name = db.Column(db.String(50),nullable=False)
     alive = db.Column(db.Boolean,nullable=False)
 
-    def serialize_character(self):
+    # favorites=db.relationship("favorites", back_populates="character")
+
+    def serialize(self):
         return{
             "id":self.id,
             "name":self.name,
             "alive":self.alive
         }
 
+class Favorite(db.Model):
+    __tablename__='favorite'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer,db.ForeignKey('user.id'))
+    character_id = db.Column(db.Integer,db.ForeignKey('character.id'))
+    planet_id = db.Column(db.Integer,db.ForeignKey('planet.id'))
+
+    user = db.relationship('User', secondary=user_favorites, back_populates="favorite")
+
+    def serialize(self):
+        return{
+            "user_id": self.user_id,
+            "character_id":self.character_id,
+            "planet_id":self.planet_id
+        }

@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Character,Planet,Favorites
+from models import db, User, Character,Planet,Favorite
 #from models import Person
 
 app = Flask(__name__)
@@ -51,7 +51,7 @@ def handle_hello():
 def get_all_characters():
     characters = Character.query.all()
     return jsonify({
-        "characters": list(map(lambda item: item.serialize_character(), characters))
+        "characters": list(map(lambda item: item.serialize(), characters))
     }),200
 
 #get character  
@@ -61,14 +61,14 @@ def get_character(theid):
     if character is None:
         return jsonify("No existe este personaje"),404
     else:
-        return jsonify(character.serialize_character()),200
+        return jsonify(character.serialize()),200
 
 #get planets
 @app.route('/planets', methods=['GET'])
 def get_all_planets():
     planets=Planet.query.all()
     return jsonify({
-        "planets":list(map(lambda item: item.serialize_planet(),planets))
+        "planets":list(map(lambda item: item.serialize(),planets))
     })
 
 #get one planet
@@ -85,37 +85,89 @@ def get_planet(theid):
 def get_all_users():
     users = User.query.all()
     return({
-        "users":list(map(lambda item: item.serialize_user(), users))
+        "users":list(map(lambda item: item.serialize(), users))
     })
 
-# @app.route('/favorites', methods=['POST'])
-# def add_favorite():
-#     body=request.json
-#     favorites = favorites()
-#     try:
-#         user_id = body['user_id']
-#         planet_id = body['planet_id']
-#         character_id = body['character_id']
+@app.route('/users/favorites', methods=['GET'])
+def get_favorites():
+    fav = Favorite.query.all()
+    return jsonify({
+        "favorites":list(map(lambda item: item.serialize(),fav))
+    }),200
+
+
+
+@app.route('/favorite/planet/<int:id_planet>', methods=['POST'])
+def add_favorite_planet(id_planet):
+ 
+    fav = Favorite()
+    try:
+        planet = Planet.query.get(id_planet)
+
+        if planet is not None:
+            fav.user_id=1
+            fav.id_planet=id_planet
+
+            db.session.add(fav)
+            db.session.commit()
         
-#         if user_id is None:
-#             return jsonify('Usuario no existe'),404
-#         if planet_id is None and character_id is None:
-#             return jsonify('No existe el favorito que deseas agregar'),404
+            return jsonify("Guardado exitosamente")
+        else:
+            return jsonify(f"El planeta {id_planet} no esta registrado, intentelo nuevamente ")
+    
+    except Exception as error:
+        return jsonify("Error en el servidor"),500
+
+
+@app.route('/favorite/character/<int:character_id>', methods=['POST'])
+def add_favorite_character(character_id):
+ 
+    fav = Favorite()
+    try:
+        character = Character.query.get(character_id)
+
+        if character is not None:
+            fav.user_id=2
+            fav.character_id=character_id
+
+            db.session.add(fav)
+            db.session.commit()
         
-#         favorites.user_id=user_id
-#         favorites.planet_id=planet_id
-#         favorites.character_id=character_id
-
-#         db.session.add(favorites)
-#         db.session.commit()
-#         return jsonify('Guardado')
-
-
-#     except Exception as error:
-#         return jsonify("Error en el servidor"),500
+            return jsonify("Guardado exitosamente")
+        else:
+            return jsonify(f"El planeta {character_id} no esta registrado, intentelo nuevamente ")
+    
+    except Exception as error:
+        return jsonify("Error en el servidor"),500
 
 
+@app.route('/favorite/planet/<int:id_planet>', methods=['DELETE'])
+def delete_planet(id_planet):
+    fav = Favorite.query.filter_by(planet_id=id_planet).first()
+    if fav is None:
+        return jsonify(f'EL planet {id_planet} no existe'),404
+    else:
+        try:
+            db.session.delete(fav)
+            db.session.commit()
+            return jsonify('Eliminado con exito'),200
 
+        except Exception as error:
+            return jsonify("Error en el servidor"),500
+        
+@app.route('/favorite/character/<int:id_character>', methods=['DELETE'])
+def delete_character(id_character):
+    fav = Favorite.query.filter_by(character_id=id_character).first()
+    if fav is None:
+        return jsonify(f'EL character {id_character} no existe'),404
+    else:
+        try:
+            db.session.delete(fav)
+            db.session.commit()
+            return jsonify('Eliminado con exito'),200
+
+        except Exception as error:
+            return jsonify("Error en el servidor"),500
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
